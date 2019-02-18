@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.329
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopRestorer", "..\DesktopRestorer\DesktopRestorer.csproj", "{7D26B012-0E8D-40C2-BD6A-1A75791272BE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopRestorer", "DesktopRestorer\DesktopRestorer.csproj", "{7D26B012-0E8D-40C2-BD6A-1A75791272BE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
