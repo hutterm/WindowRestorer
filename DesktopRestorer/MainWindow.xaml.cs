@@ -140,10 +140,44 @@ namespace DesktopRestorer
         static extern bool SetWindowPlacement(
             IntPtr hWnd,ref WINDOWPLACEMENT lpwndpl);
 
+        delegate bool EnumThreadDelegate(IntPtr hWnd, IntPtr lParam);
 
+[DllImport("user32.dll")]
+static extern bool EnumThreadWindows(int dwThreadId, EnumThreadDelegate lpfn,
+    IntPtr lParam);
+
+static List<IntPtr> EnumerateProcessWindowHandles(int processId)
+{
+    var handles = new List<IntPtr>();
+
+    foreach (ProcessThread thread in Process.GetProcessById(processId).Threads)
+        EnumThreadWindows(thread.Id, 
+            (hWnd, lParam) => { handles.Add(hWnd); return true; }, IntPtr.Zero);
+
+    return handles;
+}
+
+private const uint WM_GETTEXT = 0x000D;
+
+[DllImport("user32.dll", CharSet = CharSet.Auto)]
+static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, int wParam, 
+    StringBuilder lParam);
+
+        
         public MainWindow()
         {
             InitializeComponent();
+            var processes = Process.GetProcesses();
+
+            TB.Text = string.Join("\n", processes.Select(process => process.ProcessName));
+            
+    foreach (var handle in EnumerateProcessWindowHandles(
+        Process.GetProcessesByName("explorer").First().Id))
+    {
+        StringBuilder message = new StringBuilder(1000);
+        SendMessage(handle, WM_GETTEXT, message.Capacity, message);
+        Console.WriteLine(message);
+    }
         }
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
