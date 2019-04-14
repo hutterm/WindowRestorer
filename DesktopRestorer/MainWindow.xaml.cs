@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,181 +17,108 @@ using System.Windows.Shapes;
 
 namespace DesktopRestorer
 {
+    public class MonitorVM
+    {
+        public MonitorVM()
+        {
+            var enumMonitors = ExternalMethods.EnumMonitors();
+            var minX = enumMonitors.Min(monitorinfoex => monitorinfoex.Monitor.Left);
+            var minY = enumMonitors.Min(monitorinfoex => monitorinfoex.Monitor.Top);
+            var maxX = enumMonitors.Max(monitorinfoex => monitorinfoex.Monitor.Right);
+            var maxY = enumMonitors.Max(monitorinfoex => monitorinfoex.Monitor.Bottom);
+            Width = maxX - minX;
+            Height = maxY - minY;
+            Monitors = enumMonitors.Select(monitorinfoex => new MonVM()
+            {
+                Left = monitorinfoex.Monitor.Left+minX,
+                Top=monitorinfoex.Monitor.Top+minY,
+                Width = monitorinfoex.Monitor.Right - monitorinfoex.Monitor.Left,
+                Height =   monitorinfoex.Monitor.Bottom - monitorinfoex.Monitor.Top
+            }).ToList();
+            
+            /*foreach (var monitorinfoex in enumMonitors)
+            {
+                var rectangle = new Rectangle(){StrokeThickness = 10,Stroke = Brushes.Black};
+                rectangle.SetValue(Canvas.LeftProperty,(double)monitorinfoex.Monitor.Left+minX);
+                rectangle.SetValue(Canvas.TopProperty,(double)monitorinfoex.Monitor.Top+minY);
+                rectangle.Width = monitorinfoex.Monitor.Right - monitorinfoex.Monitor.Left;
+                rectangle.Height = monitorinfoex.Monitor.Bottom - monitorinfoex.Monitor.Top;
+                DisplayCanvas.Children.Add(rectangle);
+            }*/
+        }
 
+        public List<MonVM> Monitors { get; }
+        public int Width { get; set; }
 
+        public int Height  { get; set; }
+    }
 
+    public class MonVM : INotifyPropertyChanged
+    {
+        public int Left { get; set; }
+
+        public int Top { get; set; }
+        public int Width { get; set; }
+
+        public int Height { get; set; }
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
     {
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct RECT
-        {
-            public int left;
-            public int top;
-            public int right;
-            public int bottom;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct POINT
-        {
-            public long x;
-            public long y;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        struct WINDOWPLACEMENT
-        {
-            public uint length;
-            public uint flags;
-            public uint showCmd;
-            public POINT ptMinPosition;
-            public POINT ptMaxPosition;
-            public RECT rcNormalPosition;
-            public RECT rcDevice;
-        }
-        enum ShowWindowCommands
-        {
-            /// <summary>
-            /// Hides the window and activates another window.
-            /// </summary>
-            Hide = 0,
-            /// <summary>
-            /// Activates and displays a window. If the window is minimized or 
-            /// maximized, the system restores it to its original size and position.
-            /// An application should specify this flag when displaying the window 
-            /// for the first time.
-            /// </summary>
-            Normal = 1,
-            /// <summary>
-            /// Activates the window and displays it as a minimized window.
-            /// </summary>
-            ShowMinimized = 2,
-            /// <summary>
-            /// Maximizes the specified window.
-            /// </summary>
-            Maximize = 3, // is this the right value?
-                          /// <summary>
-                          /// Activates the window and displays it as a maximized window.
-                          /// </summary>       
-            ShowMaximized = 3,
-            /// <summary>
-            /// Displays a window in its most recent size and position. This value 
-            /// is similar to <see cref="Win32.ShowWindowCommand.Normal"/>, except 
-            /// the window is not activated.
-            /// </summary>
-            ShowNoActivate = 4,
-            /// <summary>
-            /// Activates the window and displays it in its current size and position. 
-            /// </summary>
-            Show = 5,
-            /// <summary>
-            /// Minimizes the specified window and activates the next top-level 
-            /// window in the Z order.
-            /// </summary>
-            Minimize = 6,
-            /// <summary>
-            /// Displays the window as a minimized window. This value is similar to
-            /// <see cref="Win32.ShowWindowCommand.ShowMinimized"/>, except the 
-            /// window is not activated.
-            /// </summary>
-            ShowMinNoActive = 7,
-            /// <summary>
-            /// Displays the window in its current size and position. This value is 
-            /// similar to <see cref="Win32.ShowWindowCommand.Show"/>, except the 
-            /// window is not activated.
-            /// </summary>
-            ShowNA = 8,
-            /// <summary>
-            /// Activates and displays the window. If the window is minimized or 
-            /// maximized, the system restores it to its original size and position. 
-            /// An application should specify this flag when restoring a minimized window.
-            /// </summary>
-            Restore = 9,
-            /// <summary>
-            /// Sets the show state based on the SW_* value specified in the 
-            /// STARTUPINFO structure passed to the CreateProcess function by the 
-            /// program that started the application.
-            /// </summary>
-            ShowDefault = 10,
-            /// <summary>
-            ///  <b>Windows 2000/XP:</b> Minimizes a window, even if the thread 
-            /// that owns the window is not responding. This flag should only be 
-            /// used when minimizing windows from a different thread.
-            /// </summary>
-            ForceMinimize = 11
-        }
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool ShowWindow(IntPtr hWnd, ShowWindowCommands nCmdShow);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern bool GetWindowRect(IntPtr hWnd, ref RECT Rect);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int Width, int Height, bool Repaint);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern bool SetWindowPlacement(
-            IntPtr hWnd,ref WINDOWPLACEMENT lpwndpl);
-
-        delegate bool EnumThreadDelegate(IntPtr hWnd, IntPtr lParam);
-
-[DllImport("user32.dll")]
-static extern bool EnumThreadWindows(int dwThreadId, EnumThreadDelegate lpfn,
-    IntPtr lParam);
-
-static List<IntPtr> EnumerateProcessWindowHandles(int processId)
-{
-    var handles = new List<IntPtr>();
-
-    foreach (ProcessThread thread in Process.GetProcessById(processId).Threads)
-        EnumThreadWindows(thread.Id, 
-            (hWnd, lParam) => { handles.Add(hWnd); return true; }, IntPtr.Zero);
-
-    return handles;
-}
-
-private const uint WM_GETTEXT = 0x000D;
-
-[DllImport("user32.dll", CharSet = CharSet.Auto)]
-static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, int wParam, 
-    StringBuilder lParam);
-
         
         public MainWindow()
         {
             InitializeComponent();
+            var vx = ExternalMethods.GetSystemMetrics(ExternalMethods.SystemMetric.SM_CXVIRTUALSCREEN);
+            var vy = ExternalMethods.GetSystemMetrics(ExternalMethods.SystemMetric.SM_CYVIRTUALSCREEN);
+
+DisplayItems.DataContext = new MonitorVM();
             var processes = Process.GetProcesses();
 
-            TB.Text = string.Join("\n", processes.Select(process => process.ProcessName));
-            
-    foreach (var handle in EnumerateProcessWindowHandles(
-        Process.GetProcessesByName("explorer").First().Id))
-    {
-        StringBuilder message = new StringBuilder(1000);
-        SendMessage(handle, WM_GETTEXT, message.Capacity, message);
-        Console.WriteLine(message);
-    }
+            foreach (var handle in
+                processes.Where(p => p.ProcessName == "chrome")
+                    .SelectMany(process => ExternalMethods.EnumerateProcessWindowHandles(process.Id)))
+
+            {
+                var message = new StringBuilder(1000);
+                ExternalMethods.SendMessage(handle, ExternalMethods.WM_GETTEXT, message.Capacity, message);
+                var rect = new ExternalMethods.RECT();
+                ExternalMethods.GetWindowRect(handle, ref rect);
+                ExternalMethods.WINDOWPLACEMENT plcacement = new ExternalMethods.WINDOWPLACEMENT();
+                ExternalMethods.GetWindowPlacement(handle, ref plcacement);
+//                if (rect.left == 0 && rect.top == 0 && rect.right == 0 && rect.bottom == 0)
+//                {
+//                    if (message.Length == 0)
+//                        continue;
+//                }
+
+                if (!ExternalMethods.IsWindowVisible(handle))
+                    continue;
+                TB.Text += $"{message} {rect.left} {rect.top} {rect.right} {rect.bottom} \n";
+
+            }
         }
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
-            Process[] processes = Process.GetProcessesByName("notepad");
+            var processes = Process.GetProcessesByName("notepad");
 
-
-            foreach (Process p in processes)
+            foreach (var p in processes)
             {
-                IntPtr handle = p.MainWindowHandle;
-                RECT Rect = new RECT();
-                if (GetWindowRect(handle, ref Rect))
-                    MoveWindow(handle, Rect.left-5, Rect.top-5, 1280, 720, true);
-                Task.Delay(5000).ContinueWith(task => { ShowWindow(handle, ShowWindowCommands.Maximize); });
+                var handle = p.MainWindowHandle;
+                ExternalMethods.RECT Rect = new ExternalMethods.RECT();
+                if (ExternalMethods.GetWindowRect(handle, ref Rect))
+                    ExternalMethods.MoveWindow(handle, Rect.left - 5, Rect.top - 5, 1280, 720, true);
+                Task.Delay(5000).ContinueWith(task => { ExternalMethods.ShowWindow(handle, ExternalMethods.ShowWindowCommands.Maximize); });
             }
         }
     }

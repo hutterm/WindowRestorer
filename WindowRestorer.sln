@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28307.329
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopRestorer", "DesktopRestorer\DesktopRestorer.csproj", "{7D26B012-0E8D-40C2-BD6A-1A75791272BE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RestorerTest", "RestorerTest\RestorerTest.csproj", "{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,26 @@ Global
 		{7D26B012-0E8D-40C2-BD6A-1A75791272BE}.Release|x64.Build.0 = Release|Any CPU
 		{7D26B012-0E8D-40C2-BD6A-1A75791272BE}.Release|x86.ActiveCfg = Release|Any CPU
 		{7D26B012-0E8D-40C2-BD6A-1A75791272BE}.Release|x86.Build.0 = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|ARM.Build.0 = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|x64.Build.0 = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Debug|x86.Build.0 = Debug|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|ARM.ActiveCfg = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|ARM.Build.0 = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|ARM64.Build.0 = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|x64.ActiveCfg = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|x64.Build.0 = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|x86.ActiveCfg = Release|Any CPU
+		{A1DFF3D1-506B-4021-BBAE-2813CBBF2503}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

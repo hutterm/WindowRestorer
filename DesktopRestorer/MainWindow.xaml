@@ -7,8 +7,34 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-    <TextBlock Name="TB" TextWrapping="Wrap"></TextBlock>
-        <Button Click="ButtonBase_OnClick" HorizontalAlignment="Right">click</Button>
-        
+        <Viewbox Height="199">
+            <ItemsControl Name="DisplayItems" ItemsSource="{Binding Monitors}" Width="{Binding Width}"
+                          Height="{Binding Height}" d:DataContext="{d:DesignInstance local:MonitorVM}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Rectangle Stroke="Black" StrokeThickness="9" Width="{Binding Width}"
+                                       Height="{Binding Height}" />
+                        </Grid>
+
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+                <ItemsControl.ItemContainerStyle>
+                    <Style>
+                        <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                        <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+            </ItemsControl>
+            <!--<Canvas Name="DisplayCanvas" />-->
+        </Viewbox>
+        <TextBlock Name="TB" TextWrapping="Wrap" Visibility="Collapsed" />
+        <Button Click="ButtonBase_OnClick" HorizontalAlignment="Right" VerticalAlignment="Bottom">click</Button>
+
     </Grid>
 </Window>
