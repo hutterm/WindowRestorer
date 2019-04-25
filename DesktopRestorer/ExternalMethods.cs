@@ -3,11 +3,78 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Windows;
 
 namespace DesktopRestorer
 {
     public static class ExternalMethods
     {
+        
+    #region Interop structs
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct DWM_THUMBNAIL_PROPERTIES
+    {
+        public int dwFlags;
+        public RECT rcDestination;
+        public RECT rcSource;
+        public byte opacity;
+        public bool fVisible;
+        public bool fSourceClientAreaOnly;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PSIZE
+    {
+        public int x;
+        public int y;
+    }
+
+    #endregion
+        #region Constants
+
+        public static readonly int GWL_STYLE = -16;
+        
+        public static readonly int DWM_TNP_VISIBLE = 0x8;
+        public static readonly int DWM_TNP_OPACITY = 0x4;
+        public static readonly int DWM_TNP_RECTDESTINATION = 0x1;
+
+        public static readonly ulong WS_VISIBLE = 0x10000000L;
+        public static readonly ulong WS_BORDER = 0x00800000L;
+        public static readonly ulong TARGETWINDOW = WS_BORDER | WS_VISIBLE;
+
+        #endregion
+
+        #region DWM functions
+
+        [DllImport("dwmapi.dll")]
+        public static extern int DwmRegisterThumbnail(IntPtr dest, IntPtr src, out IntPtr thumb);
+
+        [DllImport("dwmapi.dll")]
+        public static extern int DwmUnregisterThumbnail(IntPtr thumb);
+
+        [DllImport("dwmapi.dll")]
+        public static extern int DwmQueryThumbnailSourceSize(IntPtr thumb, out PSIZE size);
+
+        [DllImport("dwmapi.dll")]
+        public static extern int DwmUpdateThumbnailProperties(IntPtr hThumb, ref DWM_THUMBNAIL_PROPERTIES props);
+
+        #endregion
+
+        #region Win32 helper functions
+
+        [DllImport("user32.dll")]
+        static extern ulong GetWindowLongA(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        static extern int EnumWindows(EnumWindowsCallback lpEnumFunc, int lParam);
+        delegate bool EnumWindowsCallback(IntPtr hwnd, int lParam);
+
+        [DllImport("user32.dll")]
+        public static extern void GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+        #endregion
+
         [StructLayout(LayoutKind.Sequential)]
         public struct RECT
         {
@@ -15,6 +82,14 @@ namespace DesktopRestorer
             public int top;
             public int right;
             public int bottom;
+
+            public RECT(Rect rect)
+            {
+                left = (int) rect.Left;
+                top = (int) rect.Top;
+                right = (int) rect.Right;
+                bottom = (int) rect.Bottom;
+            }
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -131,8 +206,6 @@ namespace DesktopRestorer
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool IsWindowVisible(IntPtr hWnd);
 
-        [DllImport("user32.dll")]
-        public static extern int GetSystemMetrics(SystemMetric smIndex);
 
         [DllImport("user32.dll")]
         internal static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum,
@@ -236,6 +309,7 @@ namespace DesktopRestorer
             EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, MonitorEnumCallBack, IntPtr.Zero);
 
             return mons;
+
             bool MonitorEnumCallBack(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData)
             {
                 MONITORINFOEX mon_info = new MONITORINFOEX();
@@ -838,13 +912,17 @@ namespace DesktopRestorer
         {
             var handles = new List<IntPtr>();
 
-            foreach (ProcessThread thread in Process.GetProcessById(processId).Threads)
-                EnumThreadWindows(thread.Id,
-                    (hWnd, lParam) =>
-                    {
-                        handles.Add(hWnd);
-                        return true;
-                    }, IntPtr.Zero);
+            try
+            {
+                foreach (ProcessThread thread in Process.GetProcessById(processId).Threads)
+                    EnumThreadWindows(thread.Id,
+                        (hWnd, lParam) =>
+                        {
+                            handles.Add(hWnd);
+                            return true;
+                        }, IntPtr.Zero);
+            }
+            catch { }
 
             return handles;
         }
@@ -854,5 +932,42 @@ namespace DesktopRestorer
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, int wParam,
             StringBuilder lParam);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+
+        /// <summary>
+        /// Gets the z-order for one or more windows atomically with respect to each other. In Windows, smaller z-order is higher. If the window is not top level, the z order is returned as -1. 
+        /// </summary>
+        public static int[] GetZOrder(params IntPtr[] hWnds)
+        {
+            var z = new int[hWnds.Length];
+            for (var i = 0; i < hWnds.Length; i++) z[i] = -1;
+
+            var index = 0;
+            var numRemaining = hWnds.Length;
+            EnumWindows((wnd, param) =>
+            {
+                var searchIndex = Array.IndexOf(hWnds, wnd);
+                if (searchIndex != -1)
+                {
+                    z[searchIndex] = index;
+                    numRemaining--;
+                    if (numRemaining == 0) return false;
+                }
+
+                index++;
+                return true;
+            }, IntPtr.Zero);
+
+            return z;
+        }
     }
 }

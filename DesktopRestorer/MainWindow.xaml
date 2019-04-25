@@ -5,36 +5,78 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DesktopRestorer"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800" d:DataContext="{d:DesignInstance  local:MainVM}">
     <Grid>
-        <Viewbox Height="199">
-            <ItemsControl Name="DisplayItems" ItemsSource="{Binding Monitors}" Width="{Binding Width}"
-                          Height="{Binding Height}" d:DataContext="{d:DesignInstance local:MonitorVM}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <Canvas />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Grid>
-                            <Rectangle Stroke="Black" StrokeThickness="9" Width="{Binding Width}"
-                                       Height="{Binding Height}" />
-                        </Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+        <Viewbox SizeChanged="FrameworkElement_OnSizeChanged" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Canvas Width="{Binding SelectedSetup.Width}"
+                              Height="{Binding SelectedSetup.Height}">
+                <ItemsControl Name="DisplayItems" ItemsSource="{Binding SelectedSetup.Monitors}" >
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Rectangle Stroke="Black" StrokeThickness="9" Width="{Binding Width}"
+                                           Height="{Binding Height}" />
+                                <Viewbox Margin="100" Opacity="0.5">
+                                    <TextBlock Text="{Binding Name}" />
+                                </Viewbox>
+                            </Grid>
 
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-                <ItemsControl.ItemContainerStyle>
-                    <Style>
-                        <Setter Property="Canvas.Top" Value="{Binding Top}" />
-                        <Setter Property="Canvas.Left" Value="{Binding Left}" />
-                    </Style>
-                </ItemsControl.ItemContainerStyle>
-            </ItemsControl>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style>
+                            <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                            <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                </ItemsControl>
+                <Rectangle Name="DWMRectangle" Fill="DeepSkyBlue" Opacity="0.5" Canvas.Left="{Binding SelectedWindow.Left}" 
+                           Canvas.Top="{Binding SelectedWindow.Top}"
+                           Width="{Binding SelectedWindow.Width}"
+                           Height="{Binding SelectedWindow.Height}"
+                           SizeChanged="FrameworkElement_OnSizeChanged"
+                           />
+            </Canvas>
             <!--<Canvas Name="DisplayCanvas" />-->
         </Viewbox>
-        <TextBlock Name="TB" TextWrapping="Wrap" Visibility="Collapsed" />
-        <Button Click="ButtonBase_OnClick" HorizontalAlignment="Right" VerticalAlignment="Bottom">click</Button>
-
+        <Grid Grid.Row="1">
+           <ListView ItemsSource="{Binding Setups}" SelectedItem="{Binding SelectedSetup,Mode=TwoWay}">
+                
+<ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" />
+                            <TextBlock Name="CurrentText" Visibility="Collapsed" FontStyle="Italic" Margin="10,0,0,0">(current)</TextBlock>
+                        </StackPanel>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                <Setter TargetName="CurrentText" Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+           </ListView> 
+        </Grid>
+        <Grid Grid.Row="2">
+            <ListView ItemsSource="{Binding Windows}" SelectedItem="{Binding SelectedWindow,Mode=TwoWay}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <TextBlock Text="{Binding ProcName}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
     </Grid>
 </Window>
