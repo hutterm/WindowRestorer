@@ -44,7 +44,6 @@
                            Canvas.Top="{Binding SelectedWindow.Top}"
                            Width="{Binding SelectedWindow.Width}"
                            Height="{Binding SelectedWindow.Height}"
-                           SizeChanged="FrameworkElement_OnSizeChanged"
                            />
             </Canvas>
             <!--<Canvas Name="DisplayCanvas" />-->

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -11,9 +12,11 @@ using System.Text;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Interop;
+using WindowsDisplayAPI;
 using DynamicData;
 using DynamicData.Binding;
 using Microsoft.Win32;
+using Vanara.PInvoke;
 
 namespace DesktopRestorer
 {
@@ -28,7 +31,7 @@ namespace DesktopRestorer
         private readonly Subject<(AutomationElement, AutomationPropertyChangedEventArgs)> _boundingRectSubject =
             new Subject<(AutomationElement, AutomationPropertyChangedEventArgs)>();
 
-        private Rect _selectedWindowRectangle;
+        private Rectangle _selectedWindowRectangle;
         private ProcessWindow _selectedWindow;
 
         private void AutomationEventHandler(object sender, AutomationPropertyChangedEventArgs e) =>
@@ -36,7 +39,6 @@ namespace DesktopRestorer
 
         public MainVM()
         {
-            
             var displaySetup = InitMonitor();
             CurrentSetup = SelectedSetup = displaySetup;
             _setups.Add(displaySetup);
@@ -50,30 +52,30 @@ namespace DesktopRestorer
                 foreach (var handle in
                     ExternalMethods.EnumerateProcessWindowHandles(process.Id))
             }*/
-            ExternalMethods.EnumWindows((handle, param) =>
-            {
-                ExternalMethods.GetWindowThreadProcessId(handle, out var id);
-                var process = Process.GetProcessById((int) id);
-
-                var message = new StringBuilder(1000);
-                ExternalMethods.GetWindowText(handle, message, message.Capacity);
-                var rect = new ExternalMethods.RECT();
-                ExternalMethods.GetWindowRect(handle, ref rect);
-                var placement = new ExternalMethods.WINDOWPLACEMENT();
-                ExternalMethods.GetWindowPlacement(handle, ref placement);
-                if (!ExternalMethods.IsWindowVisible(handle))
-                    return true;
-                var processWindow = new ProcessWindow()
-                {
-                    Parent = CurrentSetup,
-                    Handle = handle,
-                    Name = message.ToString(), ProcName = process.ProcessName, Rect = rect, Placement = placement,
-                    ZOrder = i
-                };
-                _windows.AddOrUpdate(processWindow);
-                i++;
-                return true;
-            }, IntPtr.Zero);
+//            ExternalMethods.EnumWindows((handle, param) =>
+//            {
+//                ExternalMethods.GetWindowThreadProcessId(handle, out var id);
+//                var process = Process.GetProcessById((int) id);
+//
+//                var message = new StringBuilder(1000);
+//                ExternalMethods.GetWindowText(handle, message, message.Capacity);
+//                var rect = new ExternalMethods.RECT();
+//                ExternalMethods.GetWindowRect(handle, ref rect);
+//                var placement = new ExternalMethods.WINDOWPLACEMENT();
+//                ExternalMethods.GetWindowPlacement(handle, ref placement);
+//                if (!ExternalMethods.IsWindowVisible(handle))
+//                    return true;
+//                var processWindow = new ProcessWindow()
+//                {
+//                    Parent = CurrentSetup,
+//                    Handle = handle,
+//                    Name = message.ToString(), ProcName = process.ProcessName, Rect = rect, Placement = placement,
+//                    ZOrder = i
+//                };
+//                _windows.AddOrUpdate(processWindow);
+//                i++;
+//                return true;
+//            }, IntPtr.Zero);
 
             Automation.AddAutomationPropertyChangedEventHandler(AutomationElement.RootElement, TreeScope.Descendants,
                 AutomationEventHandler, AutomationElement.BoundingRectangleProperty);
@@ -87,32 +89,30 @@ namespace DesktopRestorer
                             var optional = _windows.Lookup((IntPtr) observable.Item1.Current.NativeWindowHandle);
                             if (optional.HasValue)
                             {
-                                optional.Value.Rect = new ExternalMethods.RECT((Rect) observable.Item2.NewValue);
-//                                _windows.AddOrUpdate(optional.Value);
+                                optional.Value.Rect = ((Rect) observable.Item2.NewValue);
                             }
-
-//                            else
-                            return;
-
+                            else
                             {
                                 var handle = (IntPtr) observable.Item1.Current.NativeWindowHandle;
 
-                                ExternalMethods.GetWindowThreadProcessId(handle, out var id);
+                                if (((User32_Gdi.WindowStyles)User32_Gdi.GetWindowLong(handle, User32_Gdi.WindowLongFlags.GWL_STYLE) &
+                                      TARGETWINDOW) !=  TARGETWINDOW)
+                                    return;
+                                User32_Gdi.GetWindowThreadProcessId(handle, out var id);
                                 var process = Process.GetProcessById((int) id);
 
                                 var message = new StringBuilder(1000);
-                                ExternalMethods.SendMessage(handle, ExternalMethods.WM_GETTEXT, message.Capacity,
-                                    message);
-                                ExternalMethods.WINDOWPLACEMENT placement = new ExternalMethods.WINDOWPLACEMENT();
-                                ExternalMethods.GetWindowPlacement(handle, ref placement);
-                                if (ExternalMethods.IsWindowVisible(handle))
+                                User32_Gdi.GetWindowText(handle, message, message.Capacity);
+                                var placement = new User32_Gdi.WINDOWPLACEMENT();
+                                User32_Gdi.GetWindowPlacement(handle, ref placement);
+                                if (User32_Gdi.IsWindowVisible(handle))
                                 {
                                     //TB.Text += $"{message} {rect.left} {rect.top} {rect.right} {rect.bottom} \n";
-                                    var processWindow = new ProcessWindow()
+                                    var processWindow = new ProcessWindow(CurrentSetup)
                                     {
                                         Handle = handle,
                                         Name = message.ToString(), ProcName = process.ProcessName,
-                                        Rect = new ExternalMethods.RECT((Rect) observable.Item2.NewValue),
+                                        Rect = ((Rect) observable.Item2.NewValue),
                                         Placement = placement,
                                         ZOrder = i
                                     };
@@ -126,7 +126,8 @@ namespace DesktopRestorer
                         catch (ElementNotAvailableException) { }
                     });
 
-
+            _setups.Connect().ObserveOnDispatcher().Bind(out var soc).Subscribe();
+            Setups = soc;
             _windows.Connect()
                 .Sort(SortExpressionComparer<ProcessWindow>.Descending(window => window.ZOrder))
                 .ObserveOnDispatcher()
@@ -176,26 +177,26 @@ namespace DesktopRestorer
 
         private DisplaySetup InitMonitor()
         {
-            var enumMonitors = ExternalMethods.EnumMonitors();
-            var maxX = enumMonitors.Max(monitorinfoex => monitorinfoex.Monitor.Right);
-            var maxY = enumMonitors.Max(monitorinfoex => monitorinfoex.Monitor.Bottom);
-            var minX = enumMonitors.Min(monitorinfoex => monitorinfoex.Monitor.Left);
-            var minY = enumMonitors.Min(monitorinfoex => monitorinfoex.Monitor.Top);
+            var displays = Display.GetDisplays().ToList();
+            var maxX = displays.Max(d => d.CurrentSetting.Position.X+d.CurrentSetting.Resolution.Width);
+            var maxY = displays.Max(d => d.CurrentSetting.Position.Y+d.CurrentSetting.Resolution.Height);
+            var minX = displays.Min(d => d.CurrentSetting.Position.X);
+            var minY = displays.Min(d => d.CurrentSetting.Position.Y);
             var ds = new DisplaySetup
             {
                 IsCurrent = true,
-                Name = $"{enumMonitors.Count} monitor{(enumMonitors.Count > 1 ? "s" : "")}",
+                Name = $"{displays.Count} monitor{(displays.Count > 1 ? "s" : "")}",
                 MinX = minX,
                 MinY = minY,
                 Width = maxX - minX,
                 Height = maxY - minY,
-                Monitors = enumMonitors.Select(monitorinfoex => new MonVM()
+                Monitors = displays.Select(display => new MonVM()
                 {
-                    Left = monitorinfoex.Monitor.Left - minX,
-                    Top = monitorinfoex.Monitor.Top - minY,
-                    Width = monitorinfoex.Monitor.Right - monitorinfoex.Monitor.Left,
-                    Height = monitorinfoex.Monitor.Bottom - monitorinfoex.Monitor.Top,
-                    Name = monitorinfoex.DeviceName
+                    Left =display.CurrentSetting.Position.X - minX,
+                    Top = display.CurrentSetting.Position.Y - minY,
+                    Width= display.CurrentSetting.Resolution.Width,
+                    Height= display.CurrentSetting.Resolution.Height,
+                    Name = display.DeviceName
                 }).ToList()
             };
             return ds;
@@ -203,7 +204,7 @@ namespace DesktopRestorer
 
         public ReadOnlyObservableCollection<ProcessWindow> Windows { get; }
 
-        private IntPtr _thumb;
+        private HTHUMBNAIL _thumb;
         private IntPtr _windowHandle;
 
         public ProcessWindow SelectedWindow
@@ -211,10 +212,10 @@ namespace DesktopRestorer
             get => _selectedWindow;
             set
             {
-                if (_selectedWindow != null && _thumb != IntPtr.Zero) ExternalMethods.DwmUnregisterThumbnail(_thumb);
+                if (_selectedWindow != null && _thumb != IntPtr.Zero) DwmApi.DwmUnregisterThumbnail(_thumb);
                 _selectedWindow = value;
                 if (_selectedWindow != null &&
-                    ExternalMethods.DwmRegisterThumbnail(_windowHandle, _selectedWindow.Handle, out _thumb) == 0)
+                    DwmApi.DwmRegisterThumbnail(_windowHandle, _selectedWindow.Handle, out _thumb) == 0)
                     UpdateThumb();
             }
         }
@@ -223,15 +224,15 @@ namespace DesktopRestorer
         {
             if (_thumb == IntPtr.Zero)
                 return;
-            var props = new ExternalMethods.DWM_THUMBNAIL_PROPERTIES
+            var props = new DwmApi.DWM_THUMBNAIL_PROPERTIES
             {
                 fVisible = true,
-                dwFlags = ExternalMethods.DWM_TNP_VISIBLE | ExternalMethods.DWM_TNP_RECTDESTINATION |
-                          ExternalMethods.DWM_TNP_OPACITY,
+                dwFlags = DwmApi.DWM_TNP.DWM_TNP_VISIBLE | DwmApi.DWM_TNP.DWM_TNP_RECTDESTINATION |
+                          DwmApi.DWM_TNP.DWM_TNP_OPACITY,
                 opacity = 0xFF,
-                rcDestination = new ExternalMethods.RECT(_selectedWindowRectangle)
+                rcDestination = new RECT(_selectedWindowRectangle)
             };
-            ExternalMethods.DwmUpdateThumbnailProperties(_thumb, ref props);
+            DwmApi.DwmUpdateThumbnailProperties(_thumb, props);
         }
 
         public DisplaySetup SelectedSetup { get; set; }
@@ -239,12 +240,12 @@ namespace DesktopRestorer
 
         public ReadOnlyObservableCollection<DisplaySetup> Setups { get; }
 
-        public Rect SelectedWindowRectangle
+        public Rectangle SelectedWindowRectangle
         {
             get => _selectedWindowRectangle;
             set
             {
-                _selectedWindowRectangle = value; 
+                _selectedWindowRectangle = value;
                 UpdateThumb();
             }
         }
@@ -255,6 +256,8 @@ namespace DesktopRestorer
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+
+        public static readonly User32_Gdi.WindowStyles TARGETWINDOW = User32_Gdi.WindowStyles.WS_BORDER | User32_Gdi.WindowStyles.WS_VISIBLE;
     }
 
     public class DisplaySetup
