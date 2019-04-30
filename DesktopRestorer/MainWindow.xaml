@@ -40,10 +40,11 @@
                         </Style>
                     </ItemsControl.ItemContainerStyle>
                 </ItemsControl>
-                <Rectangle Name="DWMRectangle" Fill="DeepSkyBlue" Opacity="0.5" Canvas.Left="{Binding SelectedWindow.Left}" 
-                           Canvas.Top="{Binding SelectedWindow.Top}"
-                           Width="{Binding SelectedWindow.Width}"
-                           Height="{Binding SelectedWindow.Height}"
+                <Rectangle Name="DWMRectangle" Fill="DeepSkyBlue" Opacity="0.5" Canvas.Left="{Binding SelectedWindow.Left,FallbackValue=-1}" 
+                           Canvas.Top="{Binding SelectedWindow.Top,FallbackValue=-1}"
+                           Width="{Binding SelectedWindow.Width,FallbackValue=0}"
+                           Height="{Binding SelectedWindow.Height,FallbackValue=0}"
+                           SizeChanged="FrameworkElement_OnSizeChanged"
                            />
             </Canvas>
             <!--<Canvas Name="DisplayCanvas" />-->
@@ -67,7 +68,7 @@
            </ListView> 
         </Grid>
         <Grid Grid.Row="2">
-            <ListView ItemsSource="{Binding Windows}" SelectedItem="{Binding SelectedWindow,Mode=TwoWay}">
+            <ListView ItemsSource="{Binding SelectedSetup.Windows}" SelectedItem="{Binding SelectedWindow,Mode=TwoWay}">
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <Grid>

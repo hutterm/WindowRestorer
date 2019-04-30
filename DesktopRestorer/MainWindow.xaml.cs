@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Reactive.Linq;
@@ -28,15 +29,22 @@ namespace DesktopRestorer
             DataContext = _mainVM;
             Closing += (sender, args) => { Automation.RemoveAllEventHandlers(); };
             Loaded += (sender, args) => _mainVM.InitWindowhandle();
-            
+           DependencyPropertyDescriptor.FromProperty(Canvas.LeftProperty, DWMRectangle.GetType()).AddValueChanged(DWMRectangle,(sender, args) => Dispatcher.Invoke(()=>FrameworkElement_OnSizeChanged(sender,null),DispatcherPriority.Loaded)); 
+           DependencyPropertyDescriptor.FromProperty(Canvas.TopProperty, DWMRectangle.GetType()).AddValueChanged(DWMRectangle,(sender, args) => Dispatcher.Invoke(()=>FrameworkElement_OnSizeChanged(sender,null),DispatcherPriority.Loaded)); 
+        }
+
+        private void SizeChangedUpdateLayout(object sender, EventArgs eventArgs)
+        {
+            DWMRectangle.LayoutUpdated -= SizeChangedUpdateLayout;
+            FrameworkElement_OnSizeChanged(sender,null);
         }
 
         private void FrameworkElement_OnSizeChanged(object sender, SizeChangedEventArgs e)
         {
-            var size = DWMRectangle.PointToScreen(new Point(DWMRectangle.ActualWidth, DWMRectangle.ActualHeight)) - DWMRectangle.PointToScreen(new Point(0, 0));
+            var size = DWMRectangle.PointToScreen(new Point(DWMRectangle.ActualWidth, DWMRectangle.ActualHeight)) - DWMRectangle.PointToScreen(new Point())+new Point(1,1);
 
             var translatePoint = DWMRectangle.TranslatePoint(new Point(), this);
-            _mainVM.SelectedWindowRectangle = new Rectangle((int) translatePoint.X,(int) translatePoint.Y, (int) size.X,(int) size.Y);
+            _mainVM.SelectedWindowRectangle = new Rectangle((int) Math.Floor(translatePoint.X),(int) Math.Floor(translatePoint.Y), (int) (size.X),(int) (size.Y));
         }
     }
 }
